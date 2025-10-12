@@ -1,0 +1,22 @@
+# PRAXIS Dependencies
+# Core framework
+python-dotenv>=1.0.0        # Load environment variables from .env file
+
+# AI & LLM
+anthropic>=0.18.0           # Claude API client
+
+# PubMed API
+biopython>=1.83             # Provides Entrez utilities for PubMed access
+requests>=2.31.0            # HTTP requests
+
+# Web UI
+streamlit>=1.31.0           # Interactive web interface
+
+# Utilities
+pydantic>=2.5.0             # Data validation
+typing-extensions>=4.9.0    # Type hints support
+
+# Future additions (commented out for MVP):
+# langgraph>=0.0.20         # Multi-agent orchestration
+# langchain>=0.1.0          # LLM framework
+# chromadb>=0.4.22          # Vector database for caching
