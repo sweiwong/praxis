@@ -6,6 +6,7 @@ Interactive UI for generating evidence-based MSK rehabilitation protocols.
 
 import streamlit as st
 from main import PraxisMVP
+from data import MSK_CONDITIONS
 from dotenv import load_dotenv
 import sys
 
@@ -63,59 +64,30 @@ diagnosis, or treatment. Always use clinical reasoning and consider individual p
 """)
 
 # =============================================================================
-# SIDEBAR: COMMON MSK CONDITIONS
+# SIDEBAR: ABOUT PRAXIS
 # =============================================================================
 
-st.sidebar.header("📚 Common MSK Conditions")
-st.sidebar.markdown("Click any condition to auto-fill:")
+st.sidebar.header("ℹ️ About PRAXIS")
+st.sidebar.markdown("""
+**PRAXIS** generates evidence-based MSK rehabilitation protocols by:
 
-# Predefined condition buttons organized by category
-common_conditions = {
-    "Knee": [
-        "ACL reconstruction rehabilitation",
-        "Meniscus repair rehabilitation",
-        "Patellar tendinopathy",
-        "Patellofemoral pain syndrome",
-    ],
-    "Shoulder": [
-        "Rotator cuff tendinopathy",
-        "Rotator cuff repair rehabilitation",
-        "Shoulder impingement syndrome",
-        "Labral tear rehabilitation",
-    ],
-    "Back": [
-        "Low back pain",
-        "Lumbar disc herniation",
-        "Lumbar spinal stenosis",
-    ],
-    "Foot/Ankle": [
-        "Ankle sprain rehabilitation",
-        "Plantar fasciitis",
-        "Achilles tendinopathy",
-    ],
-    "Elbow/Wrist": [
-        "Tennis elbow (lateral epicondylitis)",
-        "Golfer's elbow (medial epicondylitis)",
-        "Wrist tendinopathy",
-    ],
-    "Hip": [
-        "Hip femoroacetabular impingement",
-        "Gluteal tendinopathy",
-        "Hip labral tear rehabilitation",
-    ]
-}
+- 🔍 Searching PubMed for latest research
+- 📊 Grading evidence quality (1A, 1B, 2A, etc.)
+- 📋 Creating phase-based protocols with exercise progressions
+- 📚 Providing research citations
 
-# Initialize session state for selected condition
+**What to Expect:**
+- Comprehensive rehabilitation protocols
+- Evidence-graded interventions
+- Dosage parameters (sets, reps, load)
+- Return-to-activity criteria
+
+**Generation Time:** 30-60 seconds per protocol
+""")
+
+# Initialize session state for selected condition (for sidebar buttons if needed later)
 if 'selected_condition' not in st.session_state:
     st.session_state.selected_condition = ""
-
-# Display condition buttons by category
-for category, conditions in common_conditions.items():
-    st.sidebar.subheader(category)
-    for condition in conditions:
-        if st.sidebar.button(condition, key=f"btn_{condition}"):
-            st.session_state.selected_condition = condition
-            st.rerun()
 
 # =============================================================================
 # SIDEBAR: SETTINGS
@@ -124,6 +96,7 @@ for category, conditions in common_conditions.items():
 st.sidebar.markdown("---")
 st.sidebar.header("⚙️ Settings")
 
+# Search parameters
 max_articles = st.sidebar.slider(
     "Max articles to analyze",
     min_value=5,
@@ -142,26 +115,85 @@ years_back = st.sidebar.slider(
     help="How many years back to search for research"
 )
 
+# Protocol customization options
+st.sidebar.markdown("**Protocol Options:**")
+
+include_education = st.sidebar.checkbox(
+    "Include patient education handout",
+    value=False,
+    help="Generate plain-language handout for patients"
+)
+
+protocol_detail = st.sidebar.selectbox(
+    "Protocol detail level",
+    ["Brief", "Standard", "Comprehensive"],
+    index=1,
+    help="Choose how detailed the protocol should be"
+)
+
+include_red_flags = st.sidebar.checkbox(
+    "Include red flags & contraindications",
+    value=True,
+    help="Add safety warnings and contraindications"
+)
+
 # =============================================================================
-# SIDEBAR: ABOUT
+# SIDEBAR: EXPORT OPTIONS
 # =============================================================================
 
 st.sidebar.markdown("---")
-st.sidebar.header("ℹ️ About PRAXIS")
+st.sidebar.header("📤 Export Options")
+
 st.sidebar.markdown("""
-PRAXIS is an open-source AI research agent that:
-- Searches PubMed for MSK research
-- Grades evidence quality
-- Generates rehab protocols
-- Provides clinician-ready guidelines
+**After generating a protocol:**
+- Download as Markdown (see tabs)
+- PDF export (coming soon)
+- Copy to clipboard (coming soon)
+""")
 
-**Built with:**
-- Claude (Anthropic)
-- PubMed API
-- Streamlit
+# =============================================================================
+# SIDEBAR: FEEDBACK
+# =============================================================================
 
-**Created by:** Wei Wong
-**GitHub:** [sweiwong/praxis](https://github.com/sweiwong/praxis)
+st.sidebar.markdown("---")
+st.sidebar.header("💬 Feedback")
+
+st.sidebar.markdown("**Found this protocol helpful?**")
+
+# Star rating
+rating = st.sidebar.slider(
+    "Rate this protocol",
+    min_value=1,
+    max_value=5,
+    value=3,
+    help="1 = Not useful, 5 = Very useful"
+)
+
+# Feedback text area
+feedback_text = st.sidebar.text_area(
+    "Comments (optional)",
+    placeholder="What would make this better?",
+    height=80,
+    help="Your feedback helps improve PRAXIS"
+)
+
+if st.sidebar.button("Submit Feedback", type="secondary"):
+    if feedback_text or rating:
+        st.sidebar.success("✓ Thank you for your feedback!")
+        # TODO: Implement feedback storage
+    else:
+        st.sidebar.info("Please provide a rating or comment")
+
+# =============================================================================
+# SIDEBAR: LINKS
+# =============================================================================
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+**Links:**
+- [GitHub Repository](https://github.com/sweiwong/praxis)
+- [Report an Issue](https://github.com/sweiwong/praxis/issues)
+- [Documentation](https://github.com/sweiwong/praxis#readme)
 """)
 
 # =============================================================================
@@ -169,14 +201,58 @@ PRAXIS is an open-source AI research agent that:
 # =============================================================================
 
 st.markdown("---")
-st.header("🔍 Enter MSK Condition")
+st.header("🔍 Select or Enter MSK Condition")
+
+# Initialize session state for dropdown selection
+if 'dropdown_condition' not in st.session_state:
+    st.session_state.dropdown_condition = ""
+
+# Cascading dropdowns using Phy MSK data
+st.subheader("📋 Browse by Body Zone")
+
+# Dropdown 1: Body Zone
+body_zones = [""] + list(MSK_CONDITIONS.keys())
+selected_body_zone = st.selectbox(
+    "1️⃣ Select Body Zone:",
+    body_zones,
+    help="Choose the primary area of pain or injury"
+)
+
+# Dropdown 2: Pain Zone (filtered by body zone)
+if selected_body_zone:
+    pain_zones = [""] + list(MSK_CONDITIONS[selected_body_zone].keys())
+    selected_pain_zone = st.selectbox(
+        "2️⃣ Select Pain Zone:",
+        pain_zones,
+        help="Choose the specific location within the body zone"
+    )
+
+    # Dropdown 3: Condition (filtered by pain zone)
+    if selected_pain_zone:
+        conditions = [""] + MSK_CONDITIONS[selected_body_zone][selected_pain_zone]
+        selected_condition = st.selectbox(
+            "3️⃣ Select Condition:",
+            conditions,
+            help="Choose the specific condition or diagnosis"
+        )
+
+        # Store selected condition for use in protocol generation
+        if selected_condition:
+            st.session_state.dropdown_condition = selected_condition
+            st.success(f"✓ Selected: **{selected_condition}**")
+else:
+    selected_pain_zone = None
+    selected_condition = None
+
+st.markdown("---")
+st.subheader("✏️ Or Enter Custom Condition")
 
 # Text input for custom condition (use session state value if button clicked)
 condition_input = st.text_input(
-    "Condition or injury:",
-    placeholder="e.g., ACL reconstruction, rotator cuff tear, patellar tendinopathy",
-    value=st.session_state.selected_condition,
-    help="Enter any musculoskeletal condition or injury"
+    "Free text input:",
+    placeholder="e.g., ACL reconstruction rehabilitation, rotator cuff tear, patellar tendinopathy",
+    value=st.session_state.selected_condition if st.session_state.selected_condition else "",
+    help="Enter any musculoskeletal condition or injury not in the dropdowns"
 )
 
 # Clear the session state after using it
@@ -218,16 +294,19 @@ with col2:
 # =============================================================================
 
 if generate_button:
+    # Determine which input to use (dropdown takes priority)
+    final_condition = st.session_state.dropdown_condition if st.session_state.dropdown_condition else condition_input
+
     # Validate input
-    if not condition_input:
-        st.error("⚠️ Please enter an MSK condition")
+    if not final_condition:
+        st.error("⚠️ Please select a condition from the dropdowns or enter one in the text field")
     else:
         # Show loading spinner with custom message
-        with st.spinner(f"🔍 Researching {condition_input}... This may take 30-60 seconds..."):
+        with st.spinner(f"🔍 Researching {final_condition}... This may take 30-60 seconds..."):
             try:
                 # Generate protocol
                 result = st.session_state.praxis.generate_protocol(
-                    condition=condition_input,
+                    condition=final_condition,
                     max_articles=max_articles,
                     years_back=years_back
                 )
@@ -258,7 +337,7 @@ if generate_button:
                         st.download_button(
                             label="📥 Download Protocol (Markdown)",
                             data=result["protocol"],
-                            file_name=f"praxis_protocol_{condition_input.replace(' ', '_')}.md",
+                            file_name=f"praxis_protocol_{final_condition.replace(' ', '_')}.md",
                             mime="text/markdown"
                         )
 
@@ -329,7 +408,7 @@ if generate_button:
                         st.download_button(
                             label="📥 Download Sources (Markdown)",
                             data=sources_text,
-                            file_name=f"praxis_sources_{condition_input.replace(' ', '_')}.md",
+                            file_name=f"praxis_sources_{final_condition.replace(' ', '_')}.md",
                             mime="text/markdown"
                         )
 
